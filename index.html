@@ -172,6 +172,7 @@
       const [tempBoards, setTempBoards] = useState({}); // 編集中の作業コピー { [idx]: {title, lines} }
       const [chapIdx, setChapIdx] = useState(0);
       const [exportState, setExportState] = useState(null); // { queue, idx } | null
+      const [themeVersion, setThemeVersion] = useState(0); // theme再読み込みトリガー
       const boardRef = useRef(null);
       const previewScale = usePreviewScale();
 
@@ -221,6 +222,14 @@
         r.onerror = rej;
         r.readAsText(file, 'utf-8');
       });
+
+      const onLoadTheme = async (e) => {
+        try {
+          const src = await readFile(e.target.files[0]);
+          new Function(src)(); // window.THEME を上書き実行
+          setThemeVersion(v => v + 1); // 再描画トリガー
+        } catch(err) { alert('テーマ読み込みエラー: ' + err.message); }
+      };
 
       const onLoadBoards = async (e) => {
         try {
@@ -380,6 +389,11 @@
               <div className="load-row">
                 <label>別ファイルを読む</label>
                 <input type="file" accept=".json" onChange={onLoadBoards} />
+              </div>
+              <h2 style={{ marginTop: 4 }}>テーマ読み込み</h2>
+              <div className="load-row">
+                <label>theme.js を読む</label>
+                <input type="file" accept=".js" onChange={onLoadTheme} />
               </div>
             </div>
 
