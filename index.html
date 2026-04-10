@@ -39,7 +39,9 @@
     .btn-move   { background: #333; color: #fff; }
     .btn-del    { background: #7f1d1d; color: #fff; }
     .btn-add    { background: #533483; color: #fff; padding: 8px; font-size: 14px; }
-    .btn-export { background: #f5b500; color: #000; padding: 10px; font-size: 15px; font-weight: bold; }
+    .btn-export     { background: #f5b500; color: #000; padding: 10px; font-size: 15px; font-weight: bold; }
+    .btn-export-all { background: #b45309; color: #fff; padding: 10px; font-size: 15px; font-weight: bold; }
+    .export-progress { font-size: 13px; color: #fbbf24; text-align: center; padding: 6px 0; }
     .btn-save       { background: #166534; color: #fff; padding: 10px; font-size: 15px; font-weight: bold; }
     .btn-chap-add   { background: #1e40af; color: #fff; padding: 8px; font-size: 13px; }
     .btn-chap-del   { background: #7f1d1d; color: #fff; padding: 8px; font-size: 13px; }
@@ -110,13 +112,19 @@
       if (line.type === 'empty') return <div style={{ height: 20 }} />;
       const text = line.text || '';
       if (line.type === 'midashi') return (
-        <div style={{ fontFamily: T.midashiFont, fontSize: T.midashiSize, color: T.midashiColor, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{T.midashiPrefix}{text}</div>
+        <div style={{ fontFamily: T.midashiFont, fontSize: T.midashiSize, color: T.midashiColor, lineHeight: 1.4, display: 'flex', gap: T.prefixGap }}>
+          <span style={{ flexShrink: 0 }}>{T.midashiPrefix}</span>
+          <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>
+        </div>
       );
       if (line.type === 'point') return (
-        <div style={{ fontFamily: T.pointFont, fontSize: T.pointSize, color: T.pointColor, WebkitTextStroke: T.pointStroke, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{T.pointPrefix}{text}</div>
+        <div style={{ fontFamily: T.pointFont, fontSize: T.pointSize, color: T.pointColor, WebkitTextStroke: T.pointStroke, lineHeight: 1.4, display: 'flex', gap: T.prefixGap }}>
+          <span style={{ flexShrink: 0 }}>{T.pointPrefix}</span>
+          <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>
+        </div>
       );
       if (line.type === 'indent') return (
-        <div style={{ fontFamily: T.indentFont, fontSize: T.indentSize, color: T.indentColor, lineHeight: 1.4, paddingLeft: 20, whiteSpace: 'pre-wrap' }}>　{text}</div>
+        <div style={{ fontFamily: T.indentFont, fontSize: T.indentSize, color: T.indentColor, lineHeight: 1.4, paddingLeft: T.indentPadding, whiteSpace: 'pre-wrap' }}>　{text}</div>
       );
       return (
         <div style={{ fontFamily: T.plainFont, fontSize: T.plainSize, color: T.plainColor, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{text}</div>
@@ -150,7 +158,32 @@
       const [boards, setBoards] = useState(null); // 読み込んだboards.json（不変・ロールバック用）
       const [tempBoards, setTempBoards] = useState({}); // 編集中の作業コピー { [idx]: {title, lines} }
       const [chapIdx, setChapIdx] = useState(0);
+      const [exportState, setExportState] = useState(null); // { queue, idx } | null
       const boardRef = useRef(null);
+
+      // 一括書き出し：exportState が変わるたびに1枚キャプチャして次へ
+      useEffect(() => {
+        if (!exportState) return;
+        const { queue, idx } = exportState;
+        const timer = setTimeout(() => {
+          html2canvas(boardRef.current, {
+            width: 1920, height: 1080, scale: 1,
+            backgroundColor: null, useCORS: true, allowTaint: true,
+          }).then(canvas => {
+            const a = document.createElement('a');
+            const num = String(idx + 1).padStart(2, '0');
+            a.download = `board_${num}_${queue[idx].title}.png`;
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+            if (idx + 1 < queue.length) {
+              setExportState({ queue, idx: idx + 1 });
+            } else {
+              setExportState(null);
+            }
+          });
+        }, 150); // Reactの再描画を待つ
+        return () => clearTimeout(timer);
+      }, [exportState]);
 
       // 起動時に boards.json を自動読み込み
       useEffect(() => {
@@ -281,6 +314,13 @@
         setTempBoards({});
       };
 
+      const exportAllPng = () => {
+        // tempBoards を boards にマージして全チャプターのキューを作成
+        const allTemp = { ...tempBoards, [chapIdx]: { title, lines: lines.length ? formToLines(lines) : null } };
+        const queue = (boards || []).map((b, i) => allTemp[i] ?? b);
+        setExportState({ queue, idx: 0 });
+      };
+
       const exportPng = () => {
         html2canvas(boardRef.current, {
           width: 1920, height: 1080, scale: 1,
@@ -297,9 +337,15 @@
         <div style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', overflow: 'hidden' }}>
 
           {/* キャプチャ用（画面外・等倍・transformなし） */}
-          <div style={{ position: 'fixed', left: -9999, top: -9999, width: 1920, height: 1080, pointerEvents: 'none' }}>
-            <Board title={title} lines={lines} boardRef={boardRef} />
-          </div>
+          {(() => {
+            const t = exportState ? exportState.queue[exportState.idx].title : title;
+            const l = exportState ? linesToForm(exportState.queue[exportState.idx].lines || []) : lines;
+            return (
+              <div style={{ position: 'fixed', left: -9999, top: -9999, width: 1920, height: 1080, pointerEvents: 'none' }}>
+                <Board title={t} lines={l} boardRef={boardRef} />
+              </div>
+            );
+          })()}
 
           {/* プレビュー（表示用・縮小） */}
           <div id="preview-wrap">
@@ -375,8 +421,11 @@
             ))}
 
             <button className="btn-add" onClick={addLine}>＋ 行を追加</button>
-            <button className="btn-export" onClick={exportPng}>PNG書き出し</button>
-            <button className="btn-save" onClick={saveJson}>JSONを保存</button>
+            <button className="btn-export" onClick={exportPng} disabled={!!exportState}>PNG書き出し</button>
+            <button className="btn-export-all" onClick={exportAllPng} disabled={!!exportState || !boards}>
+              {exportState ? `書き出し中… ${exportState.idx + 1} / ${exportState.queue.length}` : '全チャプター一括書き出し'}
+            </button>
+            <button className="btn-save" onClick={saveJson} disabled={!!exportState}>JSONを保存</button>
           </div>
         </div>
       );

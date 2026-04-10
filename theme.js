@@ -29,6 +29,7 @@ window.THEME = {
   pointStroke:  '2px #043e80',
 
   // ── 　字下げ ──
+  indentPadding: 20,         // px（左インデント量）
   indentFont:   'MgenLight',
   indentSize:   40,
   indentColor:  '#ffffff',
@@ -39,5 +40,8 @@ window.THEME = {
   plainColor:   '#ffffff',
 
   // ── 行間 ──
-  lineGap:      6,
+  lineGap:      6,           // px
+
+  // ── 行頭記号とテキストの間隔 ──
+  prefixGap:    8,           // px
 };

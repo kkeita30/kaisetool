@@ -94,28 +94,34 @@ window.THEME = {
   titleColor:   '#ffffff',
 
   // ▼ 見出し
+  midashiPrefix: '▼',       // 行頭記号（表示のみ。boards.jsonの内部マーカーは▼固定）
   midashiFont:  'MgenHeavy',
-  midashiSize:  50,
-  midashiColor: '#f5b500', //オレンジ
+  midashiSize:  50,          // px
+  midashiColor: '#f5b500',   // オレンジ
 
   // ⇒ ポイント
+  pointPrefix:  '⇒',        // 行頭記号（表示のみ。boards.jsonの内部マーカーは⇒固定）
   pointFont:    'MgenBold',
-  pointSize:    50,
+  pointSize:    50,          // px
   pointColor:   '#ffffff',
   pointStroke:  '2px #043e80', // WebkitTextStroke（ブルーの縁取り）
 
   // 　字下げ
+  indentPadding: 20,         // px（左インデント量）
   indentFont:   'MgenLight',
-  indentSize:   40,
+  indentSize:   40,          // px
   indentColor:  '#ffffff',
 
   // 平文
   plainFont:    'MgenLight',
-  plainSize:    40,
+  plainSize:    40,          // px
   plainColor:   '#ffffff',
 
   // 行間（flexbox gap）
   lineGap:      6,           // px
+
+  // 行頭記号とテキストの間隔
+  prefixGap:    8,           // px
 };
 ```
 
