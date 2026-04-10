@@ -62,7 +62,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useRef } = React;
+    const { useState, useRef, useEffect } = React;
 
     const TYPES = [
       { value: 'midashi', label: '▼ 見出し' },
@@ -130,6 +130,21 @@
       const [boards, setBoards] = useState(null); // 読み込んだboards.json
       const [chapIdx, setChapIdx] = useState(0);
       const boardRef = useRef(null);
+
+      // 起動時に boards.json を自動読み込み
+      useEffect(() => {
+        fetch('./boards.json')
+          .then(r => r.json())
+          .then(data => {
+            setBoards(data);
+            const entry = data[0];
+            if (entry) {
+              setTitle(entry.title || '');
+              setLines(linesToForm(entry.lines) || [{ type: 'midashi', text: '' }]);
+            }
+          })
+          .catch(() => {}); // ファイルがなければ何もしない
+      }, []);
 
       // ファイル読み込み
       const readFile = (file) => new Promise((res, rej) => {
@@ -209,11 +224,10 @@
 
             {/* ── ファイル読み込み ── */}
             <div className="section">
-              <h2>JSONファイル読み込み</h2>
+              <h2>JSONファイル読み込み {boards && <span className="badge">{boards.length}件</span>}</h2>
               <div className="load-row">
-                <label>boards.json</label>
+                <label>別ファイルを読む</label>
                 <input type="file" accept=".json" onChange={onLoadBoards} />
-                {boards && <span className="badge">{boards.length}件</span>}
               </div>
             </div>
 
