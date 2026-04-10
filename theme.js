@@ -16,11 +16,13 @@ window.THEME = {
   titleColor:   '#ffffff',
 
   // ── ▼ 見出し ──
+  midashiPrefix: '▼',
   midashiFont:  'MgenHeavy',
   midashiSize:  50,
   midashiColor: '#f5b500',
 
   // ── ⇒ ポイント ──
+  pointPrefix:  '⇒',
   pointFont:    'MgenBold',
   pointSize:    50,
   pointColor:   '#ffffff',

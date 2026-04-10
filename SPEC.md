@@ -62,8 +62,8 @@ tool/
 
 | 先頭文字 | タイプ | フォント | サイズ | 色 |
 |---|---|---|---|---|
-| `▼` | 見出し（midashi） | MgenHeavy | `midashiSize` | `midashiColor` |
-| `⇒` | ポイント（point） | MgenBold | `pointSize` | `pointColor`＋テキストストローク |
+| `▼` | 見出し（midashi） | MgenHeavy | `midashiSize` | `midashiColor` |（表示は `midashiPrefix` で変更可）|
+| `⇒` | ポイント（point） | MgenBold | `pointSize` | `pointColor`＋テキストストローク |（表示は `pointPrefix` で変更可）|
 | `　`（全角スペース） | 字下げ（indent） | MgenLight | `indentSize` | `indentColor` |
 | 空文字列 `""` | 空行（empty） | — | — | 高さ20pxのスペース |
 | その他 | 平文（plain） | MgenLight | `plainSize` | `plainColor` |
@@ -130,7 +130,9 @@ window.THEME = {
 
 ### 起動方法
 
-ブラウザで `tool/index.html` を直接開く（ローカルファイル）。サーバー不要。
+VS Code の **Live Server** 拡張を使用する。`index.html` を右クリック →「Open with Live Server」で起動。
+
+> `boards.json` の自動読み込みに `fetch()` を使用しているため、`file://` プロトコル（ダブルクリックで直接開く）では動作しない。
 
 ### 操作フロー
 

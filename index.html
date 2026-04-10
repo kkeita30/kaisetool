@@ -22,10 +22,11 @@
     }
     #form h1 { font-size: 16px; color: #93c5fd; }
     #form h2 { font-size: 12px; color: #aaa; margin-top: 4px; }
-    #form input[type=text], #form select {
+    #form input[type=text], #form textarea, #form select {
       width: 100%; padding: 6px 8px; background: #0f3460; border: 1px solid #444;
       color: #fff; border-radius: 4px; font-size: 13px;
     }
+    #form textarea { resize: vertical; min-height: 34px; line-height: 1.5; font-family: sans-serif; }
     .section { display: flex; flex-direction: column; gap: 6px; }
     .divider { border: none; border-top: 1px solid #334; margin: 4px 0; }
     .load-row { display: flex; gap: 6px; align-items: center; }
@@ -39,8 +40,12 @@
     .btn-del    { background: #7f1d1d; color: #fff; }
     .btn-add    { background: #533483; color: #fff; padding: 8px; font-size: 14px; }
     .btn-export { background: #f5b500; color: #000; padding: 10px; font-size: 15px; font-weight: bold; }
-    .btn-save   { background: #166534; color: #fff; padding: 10px; font-size: 15px; font-weight: bold; }
+    .btn-save       { background: #166534; color: #fff; padding: 10px; font-size: 15px; font-weight: bold; }
+    .btn-chap-add   { background: #1e40af; color: #fff; padding: 8px; font-size: 13px; }
+    .btn-chap-del   { background: #7f1d1d; color: #fff; padding: 8px; font-size: 13px; }
+    .chap-actions   { display: flex; gap: 6px; }
     .badge { font-size: 11px; background: #1d4ed8; color: #fff; border-radius: 3px; padding: 2px 6px; }
+    .badge-dirty { font-size: 11px; background: #92400e; color: #fff; border-radius: 3px; padding: 2px 6px; }
 
     #preview-wrap {
       flex: 1; display: flex; align-items: center; justify-content: center;
@@ -73,13 +78,16 @@
       { value: 'empty',   label: '空行' },
     ];
 
+    // boards.json の内部マーカー（固定）
+    const MARKER = { midashi: '▼', point: '⇒', indent: '　' };
+
     // フォーム用オブジェクト配列 → lines文字列配列
     function formToLines(lines) {
       return lines.map(l => {
         if (l.type === 'empty')   return '';
-        if (l.type === 'midashi') return '▼' + l.text;
-        if (l.type === 'point')   return '⇒' + l.text;
-        if (l.type === 'indent')  return '　' + l.text;
+        if (l.type === 'midashi') return MARKER.midashi + l.text;
+        if (l.type === 'point')   return MARKER.point   + l.text;
+        if (l.type === 'indent')  return MARKER.indent  + l.text;
         return l.text;
       });
     }
@@ -88,10 +96,10 @@
     function linesToForm(lines) {
       if (!lines) return [];
       return lines.map(str => {
-        if (str === '')          return { type: 'empty',   text: '' };
-        if (str.startsWith('▼')) return { type: 'midashi', text: str.slice(1) };
-        if (str.startsWith('⇒')) return { type: 'point',   text: str.slice(1) };
-        if (str.startsWith('　')) return { type: 'indent',  text: str.slice(1) };
+        if (str === '')                          return { type: 'empty',   text: '' };
+        if (str.startsWith(MARKER.midashi))      return { type: 'midashi', text: str.slice(MARKER.midashi.length) };
+        if (str.startsWith(MARKER.point))        return { type: 'point',   text: str.slice(MARKER.point.length) };
+        if (str.startsWith(MARKER.indent))       return { type: 'indent',  text: str.slice(MARKER.indent.length) };
         return { type: 'plain', text: str };
       });
     }
@@ -102,16 +110,16 @@
       if (line.type === 'empty') return <div style={{ height: 20 }} />;
       const text = line.text || '';
       if (line.type === 'midashi') return (
-        <div style={{ fontFamily: T.midashiFont, fontSize: T.midashiSize, color: T.midashiColor, lineHeight: 1.4 }}>▼{text}</div>
+        <div style={{ fontFamily: T.midashiFont, fontSize: T.midashiSize, color: T.midashiColor, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{T.midashiPrefix}{text}</div>
       );
       if (line.type === 'point') return (
-        <div style={{ fontFamily: T.pointFont, fontSize: T.pointSize, color: T.pointColor, WebkitTextStroke: T.pointStroke, lineHeight: 1.4 }}>⇒{text}</div>
+        <div style={{ fontFamily: T.pointFont, fontSize: T.pointSize, color: T.pointColor, WebkitTextStroke: T.pointStroke, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{T.pointPrefix}{text}</div>
       );
       if (line.type === 'indent') return (
-        <div style={{ fontFamily: T.indentFont, fontSize: T.indentSize, color: T.indentColor, lineHeight: 1.4, paddingLeft: 20 }}>　{text}</div>
+        <div style={{ fontFamily: T.indentFont, fontSize: T.indentSize, color: T.indentColor, lineHeight: 1.4, paddingLeft: 20, whiteSpace: 'pre-wrap' }}>　{text}</div>
       );
       return (
-        <div style={{ fontFamily: T.plainFont, fontSize: T.plainSize, color: T.plainColor, lineHeight: 1.4 }}>{text}</div>
+        <div style={{ fontFamily: T.plainFont, fontSize: T.plainSize, color: T.plainColor, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{text}</div>
       );
     }
 
@@ -139,7 +147,8 @@
     function App() {
       const [title, setTitle]   = useState('');
       const [lines, setLines]   = useState([{ type: 'midashi', text: '' }]);
-      const [boards, setBoards] = useState(null); // 読み込んだboards.json
+      const [boards, setBoards] = useState(null); // 読み込んだboards.json（不変・ロールバック用）
+      const [tempBoards, setTempBoards] = useState({}); // 編集中の作業コピー { [idx]: {title, lines} }
       const [chapIdx, setChapIdx] = useState(0);
       const boardRef = useRef(null);
 
@@ -171,6 +180,7 @@
           const src = await readFile(e.target.files[0]);
           const data = JSON.parse(src);
           setBoards(data);
+          setTempBoards({});
           setChapIdx(0);
           applyBoard(data, 0);
         } catch(err) { alert('読み込みエラー: ' + err.message); }
@@ -185,8 +195,62 @@
       };
 
       const onSelectChap = (idx) => {
+        // 現在の編集内容を tempBoards に書き込む
+        const newTemp = {
+          ...tempBoards,
+          [chapIdx]: { title, lines: lines.length ? formToLines(lines) : null },
+        };
+        setTempBoards(newTemp);
         setChapIdx(idx);
-        if (boards) applyBoard(boards, idx);
+        // tempBoards にあればそちら、なければ boards から読み込む
+        const entry = newTemp[idx] ?? boards?.[idx];
+        if (entry) {
+          setTitle(entry.title || '');
+          setLines(linesToForm(entry.lines) || [{ type: 'midashi', text: '' }]);
+        }
+      };
+
+
+      // チャプター追加・削除
+      const addChap = () => {
+        const newChap = { title, lines: lines.length ? formToLines(lines) : null };
+        const newBoards = [
+          ...(boards || []).slice(0, chapIdx + 1),
+          newChap,
+          ...(boards || []).slice(chapIdx + 1),
+        ];
+        // tempBoards のインデックスを再マップ（chapIdx+1 以降を +1 ずらす）
+        const newTemp = {};
+        Object.entries(tempBoards).forEach(([k, v]) => {
+          const i = Number(k);
+          newTemp[i <= chapIdx ? i : i + 1] = v;
+        });
+        setBoards(newBoards);
+        setTempBoards(newTemp);
+        setChapIdx(chapIdx + 1);
+        // フォームは現在の編集内容のまま（新チャプターとして継続編集）
+      };
+
+      const deleteChap = () => {
+        if ((boards || []).length <= 1) { alert('チャプターが1件のみのため削除できません'); return; }
+        if (!confirm(`「${title}」を削除しますか？`)) return;
+        const newBoards = (boards || []).filter((_, i) => i !== chapIdx);
+        // tempBoards のインデックスを再マップ（chapIdx を除去、以降を -1 ずらす）
+        const newTemp = {};
+        Object.entries(tempBoards).forEach(([k, v]) => {
+          const i = Number(k);
+          if (i < chapIdx) newTemp[i] = v;
+          else if (i > chapIdx) newTemp[i - 1] = v;
+        });
+        const newIdx = Math.min(chapIdx, newBoards.length - 1);
+        setBoards(newBoards);
+        setTempBoards(newTemp);
+        setChapIdx(newIdx);
+        const entry = newTemp[newIdx] ?? newBoards[newIdx];
+        if (entry) {
+          setTitle(entry.title || '');
+          setLines(linesToForm(entry.lines) || [{ type: 'midashi', text: '' }]);
+        }
       };
 
       // 行操作
@@ -202,18 +266,19 @@
       });
 
       const saveJson = () => {
-        // 現在の編集内容を boards[chapIdx] に反映した配列を作る
-        const updated = (boards || []).map((b, i) =>
-          i === chapIdx ? { title, lines: lines.length ? formToLines(lines) : null } : b
-        );
-        // boards が null（自動読み込み失敗）の場合は現在の1枚だけ
-        const data = updated.length ? updated : [{ title, lines: formToLines(lines) }];
+        // tempBoards（編集中）を boards にマージ。現チャプターの編集も含める
+        const allTemp = { ...tempBoards, [chapIdx]: { title, lines: lines.length ? formToLines(lines) : null } };
+        const merged = (boards || []).map((b, i) => allTemp[i] ?? b);
+        const data = merged.length ? merged : [{ title, lines: formToLines(lines) }];
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.download = 'boards.json';
         a.href = URL.createObjectURL(blob);
         a.click();
         URL.revokeObjectURL(a.href);
+        // 保存後に boards を最新状態に更新し tempBoards をクリア
+        setBoards(merged);
+        setTempBoards({});
       };
 
       const exportPng = () => {
@@ -261,12 +326,21 @@
             {/* ── チャプター選択 ── */}
             {boards && (
               <div className="section">
-                <h2>チャプター選択</h2>
+                <h2>
+                  チャプター選択
+                  {Object.keys(tempBoards).length > 0 && (
+                    <span className="badge-dirty" style={{ marginLeft: 6 }}>編集中あり</span>
+                  )}
+                </h2>
                 <select value={chapIdx} onChange={e => onSelectChap(Number(e.target.value))}>
                   {boards.map((b, i) => (
-                    <option key={i} value={i}>{i + 1}. {b.title}</option>
+                    <option key={i} value={i}>{tempBoards[i] ? '● ' : ''}{i + 1}. {i === chapIdx ? title : b.title}</option>
                   ))}
                 </select>
+                <div className="chap-actions">
+                  <button className="btn-chap-add" onClick={addChap}>＋ チャプターを追加</button>
+                  <button className="btn-chap-del" onClick={deleteChap}>このチャプターを削除</button>
+                </div>
               </div>
             )}
 
@@ -291,9 +365,10 @@
                   <button className="btn-del"  onClick={() => deleteLine(i)}>✕</button>
                 </div>
                 {line.type !== 'empty' && (
-                  <input type="text" value={line.text}
+                  <textarea value={line.text}
                     onChange={e => updateLine(i, 'text', e.target.value)}
                     placeholder="テキストを入力"
+                    rows={line.text.split('\n').length}
                   />
                 )}
               </div>
