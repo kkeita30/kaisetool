@@ -54,7 +54,7 @@
       background: #111; overflow: hidden;
     }
     .checker {
-      width: 960px; height: 540px; flex-shrink: 0; overflow: hidden; position: relative;
+      flex-shrink: 0; overflow: hidden; position: relative;
       background-image:
         linear-gradient(45deg,#2a2a2a 25%,transparent 25%),
         linear-gradient(-45deg,#2a2a2a 25%,transparent 25%),
@@ -63,7 +63,7 @@
       background-size: 16px 16px;
       background-position: 0 0,0 8px,8px -8px,-8px 0;
     }
-    .board-frame { width: 1920px; height: 1080px; transform: scale(0.5); transform-origin: top left; }
+    .board-frame { width: 1920px; height: 1080px; transform-origin: top left; }
   </style>
 </head>
 <body>
@@ -71,6 +71,19 @@
 
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
+
+    const FORM_WIDTH = 400; // フォームパネルの幅(px)
+
+    function usePreviewScale() {
+      const calc = () => Math.min((window.innerWidth - FORM_WIDTH) / 1920, window.innerHeight / 1080);
+      const [scale, setScale] = useState(calc);
+      useEffect(() => {
+        const onResize = () => setScale(calc());
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+      return scale;
+    }
 
     const TYPES = [
       { value: 'midashi', label: '▼ 見出し' },
@@ -160,6 +173,7 @@
       const [chapIdx, setChapIdx] = useState(0);
       const [exportState, setExportState] = useState(null); // { queue, idx } | null
       const boardRef = useRef(null);
+      const previewScale = usePreviewScale();
 
       // 一括書き出し：exportState が変わるたびに1枚キャプチャして次へ
       useEffect(() => {
@@ -349,8 +363,8 @@
 
           {/* プレビュー（表示用・縮小） */}
           <div id="preview-wrap">
-            <div className="checker">
-              <div className="board-frame">
+            <div className="checker" style={{ width: 1920 * previewScale, height: 1080 * previewScale }}>
+              <div className="board-frame" style={{ transform: `scale(${previewScale})` }}>
                 <Board title={title} lines={lines} boardRef={null} />
               </div>
             </div>
